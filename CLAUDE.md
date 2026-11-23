@@ -77,18 +77,41 @@ Registro en webhook-central (lo hace Moibe o el agente de webhook-central; es de
   `/procesa_ine_atras/`, `/procesa_ine_ambas/`, `/procesa_pasaporte/`, `/procesa_cedula_panama/`.
   Viejos sin sobre: `/procesa_fm/`, `/procesa_csf/`, `/procesa_cedula/`. Códigos en `codigos.py`
   (200/210/211/212 procesado; 220-228 rechazos; 4xx/5xx errores).
-- **RAD hoy no tiene ninguna autenticación**: cualquiera en la red puede llamarlo.
-- **RAD hoy no registra una línea por petición**. Solo logs de texto (`logging_config.py`) a
-  stdout/stderr que pm2 guarda en `~/.pm2/logs/document-ai-api-{out,error}.log`, rotados a diario por
-  pm2-logrotate. Ahí se ven las llamadas a Document AI y los rechazos (`Documento no procesado: NO_ES_INE`),
-  pero NO el código con el que salió cada respuesta, ni 422/222/223/227/228, ni tiempos, ni quién llamó.
-  O sea: **no hay de dónde sacar "uso" todavía**; hay que construirlo en RAD.
+- Antes de la fase 1 (abajo) RAD no tenía autenticación ni registraba una línea por petición: solo
+  logs de texto de pm2. En **prod (`main`) sigue así** hasta que se promueva la fase 1.
 
-## Decisión pendiente: dónde viven las keys y el uso
+## Keys y uso: decidido A (Moibe, 2026-11-23) — fase 1 hecha en RAD `dev`
 
-Hay que decidirla con Moibe antes de construir `/keys` y `/uso`. Recomendación: **opción A**.
+**Fase 1 (observación) hecha**: document_ai `dev`, commit `91cb662`, desplegado a `document-ai-api-dev`
+(8102) y verificado (responde; `/admin/*` da 503 porque aún no hay token; prod 8099 intacto). Probado
+con `TestClient` y el clasificador simulado (sin gastar Document AI): 7 caminos de petición, llaves
+válida/inválida/revocada/ausente, paginación, resumen, 401/503, admin fuera de Swagger.
 
-- **A. RAD es dueño de keys y uso** (recomendada). document_ai gana su propia SQLite con `api_keys`
+- `uso.py` (RAD): SQLite propia `rad.db` junto a `app.py` (o `RAD_DB`), WAL. Tabla `api_keys` (`id`,
+  `prefijo` visible tipo `rad_Ab3dE9xQ`, `hash` SHA-256, `cliente`, `nota`, `creada`, `revocada`) y `uso`
+  (una fila por `POST /procesa_*`: `fecha` ISO UTC con `Z`, `api_key_id`, `llave` = `valida` /
+  `sin_llave` / `invalida` / `revocada`, `endpoint` sin diagonal final, `status_http`, `codigo`/`estado`
+  del sobre (null en los endpoints viejos y en el 500 inesperado), `ms`, `bytes`, `archivos`, `mime`,
+  `categoria`, `confianza`, `ip`, `agente`). `X-API-Key` es **opcional**: nada se rechaza por la llave.
+- `admin.py` (RAD), `Authorization: Bearer <RAD_ADMIN_TOKEN>`; sin token en el `.env` de RAD → 503:
+  - `GET /admin/keys` → `{llaves:[{id,prefijo,cliente,nota,creada,revocada,peticiones,ultimo_uso}]}`
+  - `POST /admin/keys` `{cliente, nota?}` → 201 con la llave completa en `llave` (**única vez**)
+  - `POST /admin/keys/{id}/revocar` → la llave (no se borra; revocar dos veces conserva la 1.ª fecha)
+  - `GET /admin/uso?desde&hasta&api_key_id&llave&endpoint&antes_de&limite` → `{filas, siguiente}`
+    (nuevas primero; siguiente página con `antes_de=siguiente`; `desde` incluye, `hasta` excluye, ISO UTC)
+  - `GET /admin/uso/resumen?agrupar=dia,cliente,llave,endpoint,codigo,status,ip&offset_min=-360` →
+    `{filas:[{…grupo, peticiones, ms_promedio, primera, ultima}]}`; `dia` cortado en hora de México.
+- Para saber a quién repartir llaves: resumen con `llave=sin_llave&agrupar=ip` (trae IP y User-Agent).
+
+**Siguiente**: (a) Moibe pone `RAD_ADMIN_TOKEN` en el `.env` de `document_ai-dev` en el server (el agente
+no edita archivos del server) y el mismo valor + `RAD_URL` en el `.env` de rad_view; (b) construir
+`/keys` y `/uso` aquí, llamando a RAD desde `+page.server.ts`; (c) fase 2, repartir llaves; (d) fase 3,
+exigirlas (pendiente en RAD: rechazar sin llave detrás de un flag, con el sobre de siempre). Promover
+RAD a `main` cuando Moibe lo pida.
+
+### Por qué A (la decisión)
+
+- **A. RAD es dueño de keys y uso** (la elegida). document_ai gana su propia SQLite con `api_keys`
   (solo el hash SHA-256 de la llave + un prefijo visible para identificarla, cliente, creada, revocada)
   y `uso` (una fila por petición: fecha, key, endpoint, `codigo`/`estado`, status HTTP, ms, MIME, tamaño,
   categoría y confianza del clasificador — **sin datos personales** del documento). Un middleware valida
