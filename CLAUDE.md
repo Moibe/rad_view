@@ -20,9 +20,15 @@ Hecho y verificado (check + build limpios; login/logout probados con curl y con 
 - **DB**: Drizzle ORM + better-sqlite3 (`local.db`). Migración inicial en `drizzle/` (commiteada).
 - **Auth** (patrón shape_up / inventario-ti, sin librerías): scrypt + sesiones con token aleatorio (solo
   el SHA-256 en la tabla `sesiones`), cookie httpOnly; `Secure` solo si `ORIGIN` es `https://` (en el
-  server de CSI se entra por IP sin TLS: con Secure el login rebota en silencio). Guard global en
-  `src/routes/+layout.server.ts`. Rutas: `/login`, `/logout` (POST), `/mi-cuenta` (cambiar contraseña).
+  server de CSI se entra por IP sin TLS: con Secure el login rebota en silencio).
+  Rutas: `/login`, `/logout` (POST), `/mi-cuenta` (cambiar contraseña).
   `npm run db:seed:admin` crea `admin` la primera vez (idempotente; `ADMIN_USER`/`ADMIN_PASSWORD` del `.env`).
+- **Guard global en `src/hooks.server.ts`, NO en un layout**: el load de un `+layout.server.ts` no corre
+  en form actions ni en `+server.ts` (comprobado: con el guard en el layout, una action sin sesión sí se
+  ejecutaba). Las rutas públicas van en `RUTAS_PUBLICAS`. El `+layout.server.ts` raíz lee `url` a
+  propósito para que cada navegación del cliente pase por el guard: sin eso, si la sesión muere a medio
+  uso, el login se pinta dentro de las barras con el usuario viejo. Probado con el build de producción
+  + Playwright. Ojo: el guard solo exige sesión; lo que sea solo para admin lo revisa cada action.
 - `/keys` y `/uso` son **placeholders**: falta la decisión de arquitectura de abajo.
 
 Pendiente: gestión de usuarios del panel (alta/baja; hoy solo existe el admin del seed), y todo lo de keys/uso.
