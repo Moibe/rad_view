@@ -12,11 +12,16 @@ Primer alcance pedido por Moibe (2026-11-23): **generar las API keys de los clie
 Hecho y verificado (check + build limpios; login/logout probados con curl y con capturas en escritorio y móvil):
 
 - Scaffold SvelteKit 2 + Svelte 5 + TS, **adapter-node**, puerto local **4900** (`strictPort`).
-- Tailwind v4 + **shadcn-svelte** (base `zinc`, modo oscuro fijo con `class="dark"` en `app.html`).
-  Componentes ya agregados: `button input label card table badge`. Más: `npx shadcn-svelte@latest add <comp> -y`.
-- Chrome glass de siempre: `TopNav` (cuenta + Salir) + `Sidebar` colapsable (Inicio / API keys / Uso),
-  gradiente grafito `#475569 → #0f172a`. `--card` del tema oscuro es translúcido para que las tarjetas
-  se vean de vidrio.
+- Tailwind v4 + **shadcn-svelte**. Componentes ya agregados: `button input label card table badge`.
+  Más: `npx shadcn-svelte@latest add <comp> -y`.
+- **Look blanco de NexusDoc / Biblioratum y buzzword-agentes-ui** (pedido de Moibe, 2026-11-23, en lugar
+  del glass gris que traía el scaffold): tokens de `nexus_poc_svelte/src/app.css` en `:root` de `app.css`
+  (fondo `#fcfcfc`, tarjetas blancas, bordes `#e2e8f0`, acento `#4268fb`), fuente Plus Jakarta Sans
+  (`@fontsource`), íconos `@lucide/svelte`. Tema claro: `app.html` ya NO lleva `class="dark"` (el bloque
+  `.dark` es el oscuro de nexus, sin interruptor todavía). `TopNav` y `Sidebar` colapsable (Inicio /
+  API keys / Uso) son barras blancas pegadas al borde con borde fino; lo activo va en azul sólido, como
+  las pestañas de buzzword. Colores siempre por token (`text-muted-foreground`, `text-destructive`…),
+  nunca `text-white/…` ni hex sueltos.
 - **DB**: Drizzle ORM + better-sqlite3 (`local.db`). Migración inicial en `drizzle/` (commiteada).
 - **Auth** (patrón shape_up / inventario-ti, sin librerías): scrypt + sesiones con token aleatorio (solo
   el SHA-256 en la tabla `sesiones`), cookie httpOnly; `Secure` solo si `ORIGIN` es `https://` (en el

@@ -1,45 +1,29 @@
 <script lang="ts">
-  // Barra superior "de vidrio" con tilt 3D al pasar el mouse + responsive (en móvil
-  // colapsa a solo-íconos). Las secciones viven en el Sidebar; aquí va la cuenta.
+  // Barra superior blanca, como la de NexusDoc / buzzword-agentes-ui: marca a la izquierda,
+  // la cuenta a la derecha. Las secciones viven en el Sidebar. En móvil colapsa a solo-íconos.
   import { page } from '$app/state';
+  import ScanText from '@lucide/svelte/icons/scan-text';
+  import CircleUserRound from '@lucide/svelte/icons/circle-user-round';
+  import LogOut from '@lucide/svelte/icons/log-out';
 
   let { usuario }: { usuario: string } = $props();
 
-  let tiltX = $state(0);
-  let tiltY = $state(0);
-
-  function handleMove(e: MouseEvent) {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
-    const MAX = 1.2;
-    tiltX = -ny * MAX;
-    tiltY = nx * MAX;
-  }
-  function handleLeave() {
-    tiltX = 0;
-    tiltY = 0;
-  }
-
-  const items = [{ href: '/mi-cuenta', label: 'Mi cuenta' }];
+  const items = [{ href: '/mi-cuenta', label: 'Mi cuenta', icon: CircleUserRound }];
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<header
-  class="topnav"
-  style="transform: perspective(900px) rotateX({tiltX}deg) rotateY({tiltY}deg);"
-  onmousemove={handleMove}
-  onmouseleave={handleLeave}
->
+<header class="topnav">
   <a href="/" class="brand" aria-label="Inicio">
-    <span class="brand-ico" aria-hidden="true"></span>
-    <span class="brand-title">RAD View</span>
+    <span class="brand-ico" aria-hidden="true"><ScanText size={20} strokeWidth={2} /></span>
+    <span class="brand-info">
+      <span class="brand-title">RAD View</span>
+      <span class="brand-sub">Administración de RAD</span>
+    </span>
   </a>
 
   <nav class="topnav-nav">
     {#each items as it (it.href)}
       <a href={it.href} class="nav-item" aria-current={page.url.pathname === it.href ? 'page' : undefined}>
-        <span class="nav-ico" aria-hidden="true"></span>
+        <it.icon size={16} aria-hidden="true" />
         <span class="nav-label">{it.label}</span>
       </a>
     {/each}
@@ -47,8 +31,12 @@
 
   <div class="cuenta">
     <span class="cuenta-nombre">{usuario}</span>
+    <span class="separador" aria-hidden="true"></span>
     <form method="POST" action="/logout">
-      <button type="submit" class="nav-item salir">Salir</button>
+      <button type="submit" class="salir" aria-label="Salir">
+        <LogOut size={16} aria-hidden="true" />
+        <span class="nav-label">Salir</span>
+      </button>
     </form>
   </div>
 </header>
@@ -56,24 +44,16 @@
 <style>
   .topnav {
     position: fixed;
-    top: 1rem;
-    left: 1rem;
-    right: 1rem;
+    top: 0;
+    left: 0;
+    right: 0;
     height: var(--topnav-height, 64px);
-    padding: 0 1.25rem;
+    padding: 0 1.5rem;
     box-sizing: border-box;
     display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.012);
-    backdrop-filter: blur(8px) saturate(110%);
-    -webkit-backdrop-filter: blur(8px) saturate(110%);
-    border: 1px solid #fff;
-    border-radius: 16px;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 4px 16px rgba(0, 0, 0, 0.12);
-    transition: transform 0.18s ease-out;
-    will-change: transform;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
     user-select: none;
     z-index: 9;
   }
@@ -81,125 +61,121 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
-    color: rgba(255, 255, 255, 0.98);
+    gap: 0.75rem;
+    color: var(--foreground);
     text-decoration: none;
-    border-radius: 8px;
-    padding: 0.25rem 0.4rem;
-    transition: background 0.18s ease;
-  }
-  .brand:hover {
-    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    min-width: 0;
   }
   .brand-ico {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.85);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+  .brand-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
   }
   .brand-title {
-    font-size: 1.2rem;
-    letter-spacing: 0.005em;
-    text-shadow:
-      0 0 10px rgba(255, 255, 255, 0.28),
-      0 0 24px rgba(255, 255, 255, 0.14);
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+  }
+  .brand-sub {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    white-space: nowrap;
   }
 
   .topnav-nav {
     display: flex;
     align-items: center;
-    gap: 0.3rem;
-    margin-left: 1.25rem;
-    padding-left: 1.25rem;
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 0.25rem;
+    margin-left: 1.5rem;
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--border);
+    height: 32px;
   }
 
-  .nav-item {
+  .nav-item,
+  .salir {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    padding: 0.45rem 0.8rem;
-    color: rgba(255, 255, 255, 0.88);
+    padding: 0.55rem 0.8rem;
+    color: var(--foreground);
     text-decoration: none;
-    font-size: 0.9rem;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 500;
     border-radius: 8px;
-    border: 1px solid transparent;
-    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    border: none;
+    background: transparent;
+    cursor: pointer;
     white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
   }
-  .nav-item:hover {
-    background: rgba(255, 255, 255, 0.09);
-    border-color: rgba(255, 255, 255, 0.16);
-    color: #fff;
+  .nav-item:hover,
+  .salir:hover {
+    background: var(--muted);
   }
   .nav-item[aria-current='page'] {
-    color: #fff;
-    background: rgba(37, 99, 235, 0.18);
-    border-color: rgba(37, 99, 235, 0.45);
-    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18) inset;
-  }
-  .nav-ico {
-    width: 16px;
-    height: 16px;
-    border-radius: 5px;
-    flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.55);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    background: var(--primary);
+    color: var(--primary-foreground);
   }
 
   .cuenta {
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.75rem;
   }
   .cuenta-nombre {
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+  }
+  .separador {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
   }
   .salir {
-    background: none;
-    cursor: pointer;
-    font-family: inherit;
+    border: 1px solid var(--border);
+    background: var(--card);
+    padding: 0.45rem 0.75rem;
   }
 
-  /* En pantallas chicas: solo íconos (oculta texto y título) para que no se desborde. */
+  /* En pantallas chicas: solo íconos (oculta textos) para que no se desborde. */
   @media (max-width: 680px) {
     .topnav {
-      padding: 0 0.6rem;
+      padding: 0 0.75rem;
     }
-    .brand {
-      gap: 0;
-      padding: 0.25rem;
-    }
-    .brand-title {
+    .brand-info {
       display: none;
     }
     .topnav-nav {
-      margin-left: 0.5rem;
-      padding-left: 0.5rem;
-      gap: 0.1rem;
+      margin-left: 0.75rem;
+      padding-left: 0.75rem;
     }
-    .nav-item {
-      padding: 0.45rem 0.5rem;
+    .nav-item,
+    .salir {
+      padding: 0.5rem;
     }
     .nav-label,
-    .cuenta-nombre {
+    .cuenta-nombre,
+    .separador {
       display: none;
-    }
-  }
-  @media (max-width: 360px) {
-    .topnav {
-      padding: 0 0.4rem;
-    }
-    .topnav-nav {
-      margin-left: 0.35rem;
-      padding-left: 0.35rem;
-    }
-    .nav-item {
-      padding: 0.45rem 0.35rem;
     }
   }
 </style>

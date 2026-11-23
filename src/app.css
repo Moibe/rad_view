@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+@import '@fontsource/plus-jakarta-sans/400.css';
+@import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/600.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -85,51 +88,58 @@
 	}
 }
 
+/* Sistema visual de NexusDoc / Biblioratum (nexus_poc_svelte/src/app.css), el mismo que usa
+   buzzword-agentes-ui: fondo casi blanco, tarjetas blancas con borde fino, un solo acento azul
+   y Plus Jakarta Sans. Si algo se ve fuera de tono, se corrige aquí y no con un color suelto. */
 :root {
 	--radius: 0.625rem;
-	--background: #ffffff;
-	--foreground: #18181b;
+	--background: #fcfcfc;
+	--foreground: #1f2937;
 	--card: #ffffff;
-	--card-foreground: #18181b;
+	--card-foreground: #1f2937;
 	--popover: #ffffff;
-	--popover-foreground: #18181b;
-	--primary: #18181b;
-	--primary-foreground: #fafafa;
-	--secondary: #f4f4f5;
-	--secondary-foreground: #18181b;
-	--muted: #f4f4f5;
-	--muted-foreground: #71717a;
-	--accent: #f4f4f5;
-	--accent-foreground: #18181b;
+	--popover-foreground: #1f2937;
+	--primary: #4268fb;
+	--primary-foreground: #f9fafb;
+	--secondary: #f1f5f9;
+	--secondary-foreground: #374151;
+	--muted: #f1f5f9;
+	--muted-foreground: #6b7280;
+	--accent: #f1f5f9;
+	--accent-foreground: #1f2937;
 	--destructive: #dc2626;
 	--destructive-foreground: #ffffff;
-	--border: #e4e4e7;
-	--input: #e4e4e7;
-	--ring: #a1a1aa;
+	--border: #e2e8f0;
+	--input: #e2e8f0;
+	--ring: #a0b3fc;
+	/* Fuera de shadcn: el azul claro de fondo para lo seleccionado y la sombra de las tarjetas. */
+	--primary-bg: #eef2ff;
+	--shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+	--shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
+/* El oscuro de nexus, por si algún día se agrega el interruptor (hoy nada pone la clase .dark). */
 .dark {
-	--background: #18181b;
-	--foreground: #fafafa;
-	/* Translúcida para que las tarjetas se vean de vidrio sobre el gradiente (el popover
-	   se queda sólido: un menú encima del contenido tiene que tapar lo de abajo). */
-	--card: rgba(255, 255, 255, 0.05);
-	--card-foreground: #fafafa;
-	--popover: #27272a;
-	--popover-foreground: #fafafa;
-	--primary: #fafafa;
-	--primary-foreground: #18181b;
-	--secondary: #3f3f46;
-	--secondary-foreground: #fafafa;
-	--muted: #3f3f46;
-	--muted-foreground: #a1a1aa;
-	--accent: #3f3f46;
-	--accent-foreground: #fafafa;
+	--background: #1e293b;
+	--foreground: #f9fafb;
+	--card: #334155;
+	--card-foreground: #f9fafb;
+	--popover: #334155;
+	--popover-foreground: #f9fafb;
+	--primary: #4268fb;
+	--primary-foreground: #f9fafb;
+	--secondary: #475569;
+	--secondary-foreground: #f9fafb;
+	--muted: #475569;
+	--muted-foreground: #cbd5e1;
+	--accent: #475569;
+	--accent-foreground: #f9fafb;
 	--destructive: #f87171;
-	--destructive-foreground: #18181b;
+	--destructive-foreground: #1e293b;
 	--border: rgba(255, 255, 255, 0.1);
 	--input: rgba(255, 255, 255, 0.15);
-	--ring: #71717a;
+	--ring: #4268fb;
+	--primary-bg: rgba(66, 104, 251, 0.18);
 }
 
 @theme inline {
@@ -152,6 +162,7 @@
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
+	--font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-lg: var(--radius);
@@ -163,6 +174,6 @@
 		@apply border-border outline-ring/50;
 	}
 	body {
-		@apply bg-background text-foreground;
+		@apply bg-background text-foreground font-sans;
 	}
 }
