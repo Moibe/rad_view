@@ -12,7 +12,7 @@ Primer alcance pedido por Moibe (2026-11-23): **generar las API keys de los clie
 Hecho y verificado (check + build limpios; login/logout probados con curl y con capturas en escritorio y móvil):
 
 - Scaffold SvelteKit 2 + Svelte 5 + TS, **adapter-node**, puerto local **4900** (`strictPort`).
-- Tailwind v4 + **shadcn-svelte**. Componentes ya agregados: `button input label card table badge`.
+- Tailwind v4 + **shadcn-svelte**. Componentes ya agregados: `button input label card table badge alert-dialog`.
   Más: `npx shadcn-svelte@latest add <comp> -y`.
 - **Look blanco de NexusDoc / Biblioratum y buzzword-agentes-ui** (pedido de Moibe, 2026-11-23, en lugar
   del glass gris que traía el scaffold): tokens de `nexus_poc_svelte/src/app.css` en `:root` de `app.css`
@@ -36,9 +36,23 @@ Hecho y verificado (check + build limpios; login/logout probados con curl y con 
   propósito para que cada navegación del cliente pase por el guard: sin eso, si la sesión muere a medio
   uso, el login se pinta dentro de las barras con el usuario viejo. Probado con el build de producción
   + Playwright. Ojo: el guard solo exige sesión; lo que sea solo para admin lo revisa cada action.
-- `/keys` y `/uso` son **placeholders**: falta la decisión de arquitectura de abajo.
+- **`/keys` y `/uso` hechos** (2026-11-23), contra RAD `/admin` desde el servidor (`$lib/server/rad.ts`,
+  que traduce cada falla de RAD a un mensaje para `AvisoRad`; la página se pinta igual, vacía):
+  - `/keys`: generar (cliente + nota), lista con peticiones/último uso, revocar con `AlertDialog` (nunca
+    `confirm()`). Generar y revocar **solo admin** (lo revisa cada action). La llave completa llega solo en
+    la respuesta de la action y se guarda en el estado de la página (no en `form`: la siguiente action la
+    borraría); se va con «Ya la guardé», al salir o recargar. Copiar: `navigator.clipboard` solo existe
+    en https/localhost; en `http://IP` cae a `execCommand('copy')` sobre el campo.
+  - `/uso`: filtros en la URL (`periodo` hoy/7d/30d/90d, `llave` = id o estado, `endpoint`, `resultado`;
+    los lee `$lib/server/filtros-uso.ts`), cifras, gráfica apilada por resultado (`GraficaUso.svelte`, SVG
+    a mano: por hora si es hoy, por día si no; tooltip con hover y flechas, «Ver como tabla»), por llave,
+    por endpoint, por código, quién llama sin llave (IP + User-Agent) y las peticiones con «Cargar más»
+    (`/uso/filas`, mismos filtros + `antes_de`). Colores de la gráfica en `--uso-*` de `app.css`.
+  - Horas: todo en hora del centro de México (`ZONA`/`OFFSET_MIN` de `$lib/rad.ts`), igual que RAD.
+  - Íconos de lucide por archivo (`@lucide/svelte/icons/x`), no del barril: el barril hace que Vite
+    reoptimice todo el paquete y recargue la página a media prueba.
 
-Pendiente: gestión de usuarios del panel (alta/baja; hoy solo existe el admin del seed), y todo lo de keys/uso.
+Pendiente: gestión de usuarios del panel (alta/baja; hoy solo existe el admin del seed).
 
 ## Correr en local
 
@@ -49,6 +63,10 @@ npm run db:migrate
 npm run db:seed:admin     # admin / admin si ADMIN_* van vacías → cámbiala en /mi-cuenta
 npm run dev               # http://localhost:4900
 ```
+
+Para `/keys` y `/uso` hace falta un RAD local: en `document_ai`,
+`venv/Scripts/python -m uvicorn app:app --port 8000`, con el mismo `RAD_ADMIN_TOKEN` en los dos `.env`
+(en este equipo ya está puesto; `RAD_DB=<ruta>` para usar una base de prueba en vez de su `rad.db`).
 
 Cambias el schema → `npm run db:generate` (commitea la migración de `drizzle/`) → `npm run db:migrate`.
 
@@ -102,15 +120,21 @@ válida/inválida/revocada/ausente, paginación, resumen, 401/503, admin fuera d
   - `GET /admin/keys` → `{llaves:[{id,prefijo,cliente,nota,creada,revocada,peticiones,ultimo_uso}]}`
   - `POST /admin/keys` `{cliente, nota?}` → 201 con la llave completa en `llave` (**única vez**)
   - `POST /admin/keys/{id}/revocar` → la llave (no se borra; revocar dos veces conserva la 1.ª fecha)
-  - `GET /admin/uso?desde&hasta&api_key_id&llave&endpoint&antes_de&limite` → `{filas, siguiente}`
-    (nuevas primero; siguiente página con `antes_de=siguiente`; `desde` incluye, `hasta` excluye, ISO UTC)
-  - `GET /admin/uso/resumen?agrupar=dia,cliente,llave,endpoint,codigo,status,ip&offset_min=-360` →
-    `{filas:[{…grupo, peticiones, ms_promedio, primera, ultima}]}`; `dia` cortado en hora de México.
-- Para saber a quién repartir llaves: resumen con `llave=sin_llave&agrupar=ip` (trae IP y User-Agent).
+  - `GET /admin/uso?desde&hasta&api_key_id&llave&endpoint&resultado&antes_de&limite` → `{filas, siguiente}`
+    (nuevas primero; siguiente página con `antes_de=siguiente`; `desde` incluye, `hasta` excluye, ISO UTC;
+    cada fila trae su `resultado`)
+  - `GET /admin/uso/resumen?agrupar=…&offset_min=-360` (+ los mismos filtros) →
+    `{filas:[{…grupo, peticiones, ms_promedio, primera, ultima}]}`. `agrupar` combina `dia`, `hora`
+    (`AAAA-MM-DDTHH`), `cliente`, `llave`, `endpoint`, `codigo`, `status`, `resultado`, `ip`, `agente`;
+    `dia`/`hora` cortados en hora de México.
+  - `resultado` = `procesado` (200/21x, o 2xx sin sobre) / `no_procesado` (22x) / `error` (HTTP ≥ 400):
+    una sola definición en SQL (`uso._RESULTADO_SQL`), para agrupar, filtrar y marcar filas. Agregado
+    en document_ai `dev` con lo de `hora` y `agente` (2026-11-23).
+- Para saber a quién repartir llaves: resumen con `llave=sin_llave&agrupar=ip,agente`.
 
-**Siguiente**: (a) ~~token de admin en el server~~ hecho 2026-11-23 (server: `.env` de `document_ai-dev` y
-de `rad_view-dev`; en local falta ponerlo en el `.env` de rad_view para desarrollar contra RAD); (b) construir
-`/keys` y `/uso` aquí, llamando a RAD desde `+page.server.ts`; (c) fase 2, repartir llaves; (d) fase 3,
+**Siguiente**: (a) ~~token de admin en el server y en local~~ hecho 2026-11-23; (b) ~~construir `/keys` y
+`/uso`~~ hecho 2026-11-23; (c) fase 2, repartir llaves (la tarjeta «Quién llama sin llave» de `/uso` dice
+a quién); (d) fase 3,
 exigirlas (pendiente en RAD: rechazar sin llave detrás de un flag, con el sobre de siempre). Promover
 RAD a `main` cuando Moibe lo pida.
 
