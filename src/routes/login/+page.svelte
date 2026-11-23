@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import ScanText from '@lucide/svelte/icons/scan-text';
 	import type { PageProps } from './$types';
 
 	let { form }: PageProps = $props();
@@ -14,7 +15,7 @@
 <div class="flex min-h-screen items-center justify-center p-4">
 	<form
 		method="POST"
-		class="glass flex w-full max-w-sm flex-col gap-5 p-8"
+		class="tarjeta flex w-full max-w-sm flex-col gap-5 p-8"
 		use:enhance={() => {
 			entrando = true;
 			return async ({ update }) => {
@@ -23,9 +24,12 @@
 			};
 		}}
 	>
-		<div class="flex flex-col gap-1 text-center">
-			<h1 class="text-2xl font-semibold">RAD View</h1>
-			<p class="text-sm text-white/70">Administración de la API de RAD</p>
+		<div class="flex flex-col items-center gap-3 text-center">
+			<span class="logo" aria-hidden="true"><ScanText size={24} strokeWidth={2} /></span>
+			<div class="flex flex-col gap-1">
+				<h1 class="text-2xl font-semibold">RAD View</h1>
+				<p class="text-sm text-muted-foreground">Administración de la API de RAD</p>
+			</div>
 		</div>
 
 		<div class="flex flex-col gap-1.5">
@@ -52,7 +56,7 @@
 		</div>
 
 		{#if form?.error}
-			<p class="text-sm text-red-300">{form.error}</p>
+			<p class="text-sm text-destructive">{form.error}</p>
 		{/if}
 
 		<Button type="submit" disabled={entrando}>{entrando ? 'Entrando…' : 'Entrar'}</Button>
@@ -60,14 +64,20 @@
 </div>
 
 <style>
-	.glass {
-		background: rgba(255, 255, 255, 0.04);
-		backdrop-filter: blur(8px) saturate(110%);
-		-webkit-backdrop-filter: blur(8px) saturate(110%);
-		border: 1px solid #fff;
+	.tarjeta {
+		background: var(--card);
+		border: 1px solid var(--border);
 		border-radius: 16px;
-		box-shadow:
-			inset 0 1px 0 rgba(255, 255, 255, 0.08),
-			0 4px 16px rgba(0, 0, 0, 0.12);
+		box-shadow: var(--shadow-md);
+	}
+	.logo {
+		width: 44px;
+		height: 44px;
+		border-radius: 12px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--primary);
+		color: var(--primary-foreground);
 	}
 </style>

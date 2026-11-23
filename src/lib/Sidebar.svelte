@@ -1,13 +1,18 @@
 <script lang="ts">
-  // Barra lateral "de vidrio" con el mismo tilt 3D que la superior. Incluye el handle
-  // para replegar/mostrar. Publica su ancho real a la variable CSS --sidebar-width
-  // para que el panel de contenido se ajuste solo.
+  // Barra lateral blanca con borde fino (el mismo lenguaje que la TopNav y que la barra de
+  // NexusDoc): la sección activa va en azul sólido, como las pestañas de buzzword-agentes-ui.
+  // Incluye el botón para replegarla; replegada deja un asa al borde izquierdo para volver.
   import { page } from '$app/state';
+  import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+  import KeyRound from '@lucide/svelte/icons/key-round';
+  import ChartColumn from '@lucide/svelte/icons/chart-column';
+  import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
 
   const secciones = [
-    { href: '/', label: 'Inicio' },
-    { href: '/keys', label: 'API keys' },
-    { href: '/uso', label: 'Uso' }
+    { href: '/', label: 'Inicio', icon: LayoutDashboard },
+    { href: '/keys', label: 'API keys', icon: KeyRound },
+    { href: '/uso', label: 'Uso', icon: ChartColumn }
   ];
   const activa = (href: string) =>
     href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
@@ -19,103 +24,58 @@
     collapsed?: boolean;
     toggleCollapsed: () => void;
   } = $props();
-
-  let tiltX = $state(0);
-  let tiltY = $state(0);
-  let sidebarWidth = $state(240);
-
-  $effect(() => {
-    if (typeof document !== 'undefined' && !collapsed) {
-      document.documentElement.style.setProperty('--sidebar-width', `${sidebarWidth}px`);
-    }
-  });
-
-  function handleMove(e: MouseEvent) {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
-    const MAX = 1.2;
-    tiltX = -ny * MAX;
-    tiltY = nx * MAX;
-  }
-  function handleLeave() {
-    tiltX = 0;
-    tiltY = 0;
-  }
-  function handleCollapseClick(e: MouseEvent) {
-    e.stopPropagation();
-    tiltX = 0;
-    tiltY = 0;
-    toggleCollapsed();
-  }
 </script>
 
 {#if !collapsed}
-  <aside
-    class="sidebar"
-    style="transform: perspective(900px) rotateX({tiltX}deg) rotateY({tiltY}deg);"
-    bind:clientWidth={sidebarWidth}
-    onmousemove={handleMove}
-    onmouseleave={handleLeave}
-  >
+  <aside class="sidebar">
     <nav>
       {#each secciones as s (s.href)}
         <a href={s.href} class="nav-item" aria-current={activa(s.href) ? 'page' : undefined}>
-          <span class="nav-ico" aria-hidden="true"></span>
+          <s.icon size={18} aria-hidden="true" />
           <span>{s.label}</span>
         </a>
       {/each}
     </nav>
 
     <div class="sidebar-footer">
-      <button type="button" class="collapse-btn" onclick={handleCollapseClick} aria-label="Replegar barra">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+      <button type="button" class="collapse-btn" onclick={toggleCollapsed} aria-label="Replegar barra">
+        <ChevronLeft size={18} aria-hidden="true" />
       </button>
     </div>
   </aside>
 {:else}
   <button type="button" class="reveal-handle" onclick={toggleCollapsed} aria-label="Mostrar barra">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+    <ChevronRight size={18} aria-hidden="true" />
   </button>
 {/if}
 
 <style>
   .sidebar {
     position: fixed;
-    top: calc(2rem + var(--topnav-height, 64px));
-    left: 1rem;
-    bottom: 1rem;
+    top: var(--topnav-height, 64px);
+    left: 0;
+    bottom: 0;
     box-sizing: border-box;
-    width: max-content;
-    min-width: 240px;
-    max-width: 380px;
-    padding: 1.5rem 1rem;
+    width: var(--sidebar-width, 240px);
+    padding: 1.25rem 0.75rem 1rem;
     display: flex;
     flex-direction: column;
-    background: rgba(255, 255, 255, 0.012);
-    backdrop-filter: blur(8px) saturate(110%);
-    -webkit-backdrop-filter: blur(8px) saturate(110%);
-    border: 1px solid #fff;
-    border-radius: 16px;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 4px 16px rgba(0, 0, 0, 0.12);
-    transition: transform 0.18s ease-out;
-    will-change: transform;
+    background: var(--card);
+    border-right: 1px solid var(--border);
     user-select: none;
   }
-  /* Móvil: flota encima del panel de contenido (el layout ya no le deja hueco), con el color
-     oscuro del gradiente casi sólido para que sus items se lean sobre el contenido. */
+  /* Móvil: flota encima del contenido (el layout ya no le deja hueco), con sombra para que
+     se despegue de la página. */
   @media (max-width: 680px) {
     .sidebar {
       z-index: 8;
-      background: color-mix(in srgb, var(--grad-b, #1e3a8a) 92%, transparent);
+      box-shadow: var(--shadow-md);
     }
   }
   nav {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.25rem;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -128,79 +88,65 @@
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.7rem 0.95rem;
-    color: rgba(255, 255, 255, 0.92);
+    gap: 0.65rem;
+    padding: 0.65rem 0.85rem;
+    color: var(--foreground);
     text-decoration: none;
-    font-size: 0.95rem;
-    letter-spacing: 0.01em;
+    font-size: 0.875rem;
+    font-weight: 500;
     border-radius: 8px;
-    border: 1px solid transparent;
-    transition: background 0.18s ease, border-color 0.18s ease;
+    transition: background 0.15s ease, color 0.15s ease;
   }
-  .nav-ico {
-    width: 16px;
-    height: 16px;
-    border-radius: 5px;
-    flex-shrink: 0;
-    background: rgba(147, 197, 253, 0.55);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  .nav-item :global(svg) {
+    color: var(--muted-foreground);
+    transition: color 0.15s ease;
   }
   .nav-item:hover {
-    background: rgba(255, 255, 255, 0.09);
-    border-color: rgba(255, 255, 255, 0.16);
+    background: var(--muted);
   }
   .nav-item[aria-current='page'] {
-    color: #fff;
-    background: rgba(37, 99, 235, 0.18);
-    border-color: rgba(37, 99, 235, 0.45);
-    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18) inset;
+    background: var(--primary);
+    color: var(--primary-foreground);
   }
-  .nav-item[aria-current='page'] .nav-ico {
-    background: #93c5fd;
+  .nav-item[aria-current='page'] :global(svg) {
+    color: var(--primary-foreground);
   }
   .sidebar-footer {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     margin-top: auto;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border);
   }
   .collapse-btn,
   .reveal-handle {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 8px;
-    padding: 0.4rem 0.5rem;
-    color: rgba(255, 255, 255, 0.85);
-    cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    padding: 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--muted-foreground);
+    cursor: pointer;
     font: inherit;
-    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    transition: background 0.15s ease, color 0.15s ease;
   }
   .collapse-btn:hover,
   .reveal-handle:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.24);
-    color: #fff;
+    background: var(--muted);
+    color: var(--foreground);
   }
   .reveal-handle {
     position: fixed;
-    left: 0.75rem;
+    left: 0;
     top: 50%;
     transform: translateY(-50%);
-    padding: 0.55rem 0.45rem;
-    border-radius: 12px;
-    border: 1px solid #fff;
-    background: rgba(255, 255, 255, 0.012);
-    backdrop-filter: blur(8px) saturate(110%);
-    -webkit-backdrop-filter: blur(8px) saturate(110%);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 4px 16px rgba(0, 0, 0, 0.12);
+    padding: 0.6rem 0.35rem;
+    border-left: none;
+    border-radius: 0 10px 10px 0;
+    box-shadow: var(--shadow-sm);
     z-index: 10;
   }
 </style>

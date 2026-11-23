@@ -14,7 +14,7 @@
 <div class="flex flex-col gap-6 py-2">
 	<div class="flex flex-col gap-1">
 		<h1 class="text-2xl font-semibold">Mi cuenta</h1>
-		<p class="text-sm text-white/70">{data.usuario} · {data.esAdmin ? 'Admin' : 'Usuario'}</p>
+		<p class="text-sm text-muted-foreground">{data.usuario} · {data.esAdmin ? 'Admin' : 'Usuario'}</p>
 	</div>
 
 	<Card.Root class="max-w-sm">
@@ -49,8 +49,8 @@
 					/>
 				</div>
 
-				{#if form?.error}<p class="text-sm text-red-300">{form.error}</p>{/if}
-				{#if form?.cambiada}<p class="text-sm text-emerald-300">Listo, tu contraseña quedó cambiada.</p>{/if}
+				{#if form?.error}<p class="text-sm text-destructive">{form.error}</p>{/if}
+				{#if form?.cambiada}<p class="text-sm text-emerald-600">Listo, tu contraseña quedó cambiada.</p>{/if}
 
 				<Button type="submit">Cambiar contraseña</Button>
 			</form>
