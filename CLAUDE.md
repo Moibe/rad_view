@@ -20,7 +20,9 @@ Hecho y verificado (check + build limpios; login/logout probados con curl y con 
 - **DB**: Drizzle ORM + better-sqlite3 (`local.db`). Migración inicial en `drizzle/` (commiteada).
 - **Auth** (patrón shape_up / inventario-ti, sin librerías): scrypt + sesiones con token aleatorio (solo
   el SHA-256 en la tabla `sesiones`), cookie httpOnly; `Secure` solo si `ORIGIN` es `https://` (en el
-  server de CSI se entra por IP sin TLS: con Secure el login rebota en silencio).
+  server de CSI se entra por IP sin TLS: con Secure el login rebota en silencio). Lo mismo al **borrarla**:
+  `cookies.delete` también trae Secure por defecto, y en http:// el navegador ignoraba el borrado (al
+  Salir la cookie se quedaba); `borrarCookieSesion` usa el mismo `secure` que `ponerCookieSesion`.
   Rutas: `/login`, `/logout` (POST), `/mi-cuenta` (cambiar contraseña).
   `npm run db:seed:admin` crea `admin` la primera vez (idempotente; `ADMIN_USER`/`ADMIN_PASSWORD` del `.env`).
 - **Guard global en `src/hooks.server.ts`, NO en un layout**: el load de un `+layout.server.ts` no corre
