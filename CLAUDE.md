@@ -57,17 +57,22 @@ Cambias el schema → `npm run db:generate` (commitea la migración de `drizzle/
 App **nueva de CSI → empieza SOLO en DEV** (política de Moibe): rama `dev`, `PROJECT_BRANCH="dev"`, en
 `apps.json` de webhook-central `"branch": "dev"`, `"env": "dev"` y sin `merge_url`. Modelo:
 `constructor-agente-rag` / `inventario-ti`. Puertos: **dev 4901**, **prod 4902** (cuando se promueva).
-El puerto nuevo hay que pedirlo a redes de CSI (firewall por puerto).
+**Desplegada en DEV desde 2026-11-23**: checkout `~/code/rad_view-dev`, pm2 `rad-view-dev`, puerto 4901
+(responde desde la red de la oficina), registrada en webhook-central como `rad_view-dev` (hook
+`despliegue-rad_view-dev`, pestaña Dev). El `.env` del server ya trae `RAD_URL=http://127.0.0.1:8102` y
+`RAD_ADMIN_TOKEN` (el mismo que el `.env` de `document_ai-dev`; `/admin` de RAD dev ya responde 401 sin
+token y 200 con él).
 
 Restricciones del server (verificadas en inventario-ti): **Node 20.20.2**. Por eso aquí se fijó
 `@sveltejs/kit@^2`, `@sveltejs/adapter-node@^5` y `better-sqlite3@^12`, y se borró el `.npmrc`
 (`engine-strict`). **No subir a Kit 3 / adapter-node 6 / better-sqlite3 13**: truenan en Node 20.
 
-Registro en webhook-central (lo hace Moibe o el agente de webhook-central; es del lado del server):
-`projects/rad_view-dev.conf` con `APP_STACK=svelte`, `PROJECT_BRANCH="dev"`, `PM2_NAME`, y
-`POST_BUILD="npm run db:migrate"` (deploy.sh no corre migraciones). El `.env` del checkout lleva
-`DATABASE_URL`, `PORT=4901`, `HOST=0.0.0.0`, `ORIGIN=http://<ip>:4901`. Primer `git clone`, primer
-`npm run db:seed:admin` y primer `pm2 start build/index.js` son manuales.
+Registro en webhook-central (repo `webhook-central`, commit `010cead`): `projects/rad_view-dev.conf`
+(`APP_STACK=svelte`, rama `dev`, `POST_BUILD="npm run db:migrate && npm run db:seed:admin"`, el seed es
+idempotente), su hook en `hooks.json` y su fila `env: dev` en `apps.json`, sin `merge_url`. El `.env`
+del checkout lleva `DATABASE_URL`, `PORT=4901`, `HOST=0.0.0.0`, `ORIGIN=http://<ip>:4901`,
+`ADMIN_USER`/`ADMIN_PASSWORD`, `RAD_URL`, `RAD_ADMIN_TOKEN`. Desde ahora, desplegar = push a `dev` +
+el cohete (o `POST /hooks/despliegue-rad_view-dev`).
 
 ## Lo que hay que saber de RAD (document_ai)
 
@@ -103,8 +108,8 @@ válida/inválida/revocada/ausente, paginación, resumen, 401/503, admin fuera d
     `{filas:[{…grupo, peticiones, ms_promedio, primera, ultima}]}`; `dia` cortado en hora de México.
 - Para saber a quién repartir llaves: resumen con `llave=sin_llave&agrupar=ip` (trae IP y User-Agent).
 
-**Siguiente**: (a) Moibe pone `RAD_ADMIN_TOKEN` en el `.env` de `document_ai-dev` en el server (el agente
-no edita archivos del server) y el mismo valor + `RAD_URL` en el `.env` de rad_view; (b) construir
+**Siguiente**: (a) ~~token de admin en el server~~ hecho 2026-11-23 (server: `.env` de `document_ai-dev` y
+de `rad_view-dev`; en local falta ponerlo en el `.env` de rad_view para desarrollar contra RAD); (b) construir
 `/keys` y `/uso` aquí, llamando a RAD desde `+page.server.ts`; (c) fase 2, repartir llaves; (d) fase 3,
 exigirlas (pendiente en RAD: rechazar sin llave detrás de un flag, con el sobre de siempre). Promover
 RAD a `main` cuando Moibe lo pida.
