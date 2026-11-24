@@ -48,6 +48,10 @@ Hecho y verificado (check + build limpios; login/logout probados con curl y con 
     a mano: por hora si es hoy, por día si no; tooltip con hover y flechas, «Ver como tabla»), por llave,
     por endpoint, por código, quién llama sin llave (IP + User-Agent) y las peticiones con «Cargar más»
     (`/uso/filas`, mismos filtros + `antes_de`). Colores de la gráfica en `--uso-*` de `app.css`.
+- **Etiqueta de ambiente** en el header y en el login (`EtiquetaAmbiente.svelte`) más una franja de color
+  arriba de la TopNav: Producción en rojo, Desarrollo en ámbar, Local en gris. La decide
+  `$lib/server/ambiente.ts`: `AMBIENTE` del `.env` si está; si no, `npm run dev` → local, `PORT` 4901 → dev,
+  4902 → prod (por eso funciona sin tocar los `.env` del server).
   - Horas: todo en hora del centro de México (`ZONA`/`OFFSET_MIN` de `$lib/rad.ts`), igual que RAD.
   - Íconos de lucide por archivo (`@lucide/svelte/icons/x`), no del barril: el barril hace que Vite
     reoptimice todo el paquete y recargue la página a media prueba.

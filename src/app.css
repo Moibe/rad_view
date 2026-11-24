@@ -123,6 +123,13 @@
 	--uso-error: #e34948;
 	--grafica-rejilla: #eef2f6;
 	--grafica-base: #cbd5e1;
+	/* Etiqueta y franja del ambiente (TopNav y login): prod en rojo para que no se confunda. */
+	--ambiente-prod: #dc2626;
+	--ambiente-prod-texto: #ffffff;
+	--ambiente-dev: #f59e0b;
+	--ambiente-dev-texto: #422006;
+	--ambiente-local: #e2e8f0;
+	--ambiente-local-texto: #334155;
 }
 
 /* El oscuro de nexus, por si algún día se agrega el interruptor (hoy nada pone la clase .dark). */

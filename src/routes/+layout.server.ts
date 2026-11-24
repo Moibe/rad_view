@@ -1,3 +1,4 @@
+import { ambiente } from '$lib/server/ambiente';
 import type { LayoutServerLoad } from './$types';
 
 // El guard (sin sesión → /login) vive en hooks.server.ts; aquí solo se pasa quién está dentro.
@@ -7,5 +8,5 @@ import type { LayoutServerLoad } from './$types';
 // página sin load propio, como /uso).
 export const load: LayoutServerLoad = async ({ locals, url }) => {
 	void url.pathname;
-	return { usuario: locals.usuario };
+	return { usuario: locals.usuario, ambiente: ambiente() };
 };

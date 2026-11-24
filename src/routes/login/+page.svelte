@@ -4,9 +4,10 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import ScanText from '@lucide/svelte/icons/scan-text';
+	import EtiquetaAmbiente from '$lib/EtiquetaAmbiente.svelte';
 	import type { PageProps } from './$types';
 
-	let { form }: PageProps = $props();
+	let { data, form }: PageProps = $props();
 	let entrando = $state(false);
 </script>
 
@@ -30,6 +31,7 @@
 				<h1 class="text-2xl font-semibold">RAD View</h1>
 				<p class="text-sm text-muted-foreground">Administración de la API de RAD</p>
 			</div>
+			<EtiquetaAmbiente ambiente={data.ambiente} />
 		</div>
 
 		<div class="flex flex-col gap-1.5">

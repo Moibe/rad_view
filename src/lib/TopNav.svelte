@@ -5,13 +5,15 @@
   import ScanText from '@lucide/svelte/icons/scan-text';
   import CircleUserRound from '@lucide/svelte/icons/circle-user-round';
   import LogOut from '@lucide/svelte/icons/log-out';
+  import EtiquetaAmbiente from '$lib/EtiquetaAmbiente.svelte';
+  import type { Ambiente } from '$lib/tipos';
 
-  let { usuario }: { usuario: string } = $props();
+  let { usuario, ambiente }: { usuario: string; ambiente: Ambiente } = $props();
 
   const items = [{ href: '/mi-cuenta', label: 'Mi cuenta', icon: CircleUserRound }];
 </script>
 
-<header class="topnav">
+<header class="topnav {ambiente}">
   <a href="/" class="brand" aria-label="Inicio">
     <span class="brand-ico" aria-hidden="true"><ScanText size={20} strokeWidth={2} /></span>
     <span class="brand-info">
@@ -19,6 +21,8 @@
       <span class="brand-sub">Administración de RAD</span>
     </span>
   </a>
+
+  <EtiquetaAmbiente {ambiente} />
 
   <nav class="topnav-nav">
     {#each items as it (it.href)}
@@ -54,8 +58,19 @@
     align-items: center;
     background: var(--card);
     border-bottom: 1px solid var(--border);
+    /* Franja de color arriba con el ambiente: se ve aunque no se lea la etiqueta. */
+    border-top: 3px solid var(--franja, transparent);
     user-select: none;
     z-index: 9;
+  }
+  .topnav.prod {
+    --franja: var(--ambiente-prod);
+  }
+  .topnav.dev {
+    --franja: var(--ambiente-dev);
+  }
+  .brand + :global(.ambiente) {
+    margin-left: 1rem;
   }
 
   .brand {
@@ -163,6 +178,9 @@
     }
     .brand-info {
       display: none;
+    }
+    .brand + :global(.ambiente) {
+      margin-left: 0.6rem;
     }
     .topnav-nav {
       margin-left: 0.75rem;

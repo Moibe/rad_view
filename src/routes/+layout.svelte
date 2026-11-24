@@ -40,7 +40,7 @@
 </svelte:head>
 
 {#if data.usuario}
-  <TopNav usuario={data.usuario.usuario} />
+  <TopNav usuario={data.usuario.usuario} ambiente={data.ambiente} />
   <Sidebar {collapsed} {toggleCollapsed} />
   <main class={collapsed ? 'collapsed' : ''}>
     <div class="contenido">
