@@ -54,11 +54,21 @@ Hecho y verificado (check + build limpios; login/logout probados con curl y con 
       quien llama) llevan un `'` delante para que Excel no los tome como fórmula.
     - **PDF**: imprime la misma página (`window.print()`). Antes trae todas las peticiones, hasta 5000.
       Los estilos de impresión ocultan las barras y los filtros y muestran el encabezado del reporte
-      (periodo, filtros en palabras, quién y cuándo). La hoja es carta horizontal y el título de la página
-      se cambia para que el PDF se llame `Uso RAD - <ambiente> - <días>`. Utilidades en `app.css`:
-      `.solo-impresion` / `.no-imprimir`. En papel las tarjetas llevan `border` y no su `ring`: el ring
-      es un box-shadow por fuera y deja una rayita al pie de la hoja anterior. La gráfica tiene `viewBox`
-      para escalarse a la hoja. Se probó generando el PDF con Chromium y revisándolo.
+      (periodo, filtros en palabras, quién y cuándo). El título de la página se cambia para que el PDF se
+      llame `Uso RAD - <ambiente> - <días>`.
+      - La hoja es **carta VERTICAL** (`@page` en `/uso`, márgenes de 10 mm). Primero se hizo horizontal y
+        salía de lado: la impresora y "Microsoft Print to PDF" usan papel vertical y Chrome giraba cada
+        hoja. **No volver a horizontal.**
+      - En papel la tabla de peticiones va con letra chica y celdas que se parten en dos renglones; las
+        unidades llevan `whitespace-nowrap` para no separar «1.9» de «MB».
+      - Al imprimir, la gráfica se **redibuja al ancho del papel** (`anchoImpresion` de `GraficaUso`,
+        `ANCHO_GRAFICA_PAPEL` = 714 px, con `beforeprint`/`afterprint` + `flushSync`). Escalada desde la
+        pantalla, los ejes quedaban de unos 7 px. Si cambian los márgenes de `@page` o el relleno de las
+        tarjetas en papel, hay que recalcular ese número.
+      - Utilidades en `app.css`: `.solo-impresion` / `.no-imprimir`. En papel las tarjetas llevan `border`
+        y no su `ring`: el ring es un box-shadow por fuera y deja una rayita al pie de la hoja anterior.
+      - Se probó generando el PDF con Chromium y revisándolo hoja por hoja: todas carta vertical, sin
+        `/Rotate`.
 - **Etiqueta de ambiente** en el header y en el login (`EtiquetaAmbiente.svelte`) más una franja de color
   arriba de la TopNav: Producción en rojo, Desarrollo en ámbar, Local en gris. La decide
   `$lib/server/ambiente.ts`: `AMBIENTE` del `.env` si está; si no, `npm run dev` → local, `PORT` 4901 → dev,

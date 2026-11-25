@@ -3,9 +3,19 @@
 	// columnas de 24 px como máximo, punta redondeada de 4 px y base recta, 2 px de aire entre
 	// segmentos, rejilla de 1 px. Cada columna es su propia zona de hover/foco con tooltip, y la
 	// tabla de abajo trae los mismos números sin hover.
+	import { flushSync } from 'svelte';
 	import { DESCRIPCION_RESULTADO, NOMBRE_RESULTADO, RESULTADOS, entero, type Cubeta, type Resultado } from '$lib/rad';
 
-	let { cubetas, agrupar }: { cubetas: Cubeta[]; agrupar: 'hora' | 'dia' } = $props();
+	let {
+		cubetas,
+		agrupar,
+		anchoImpresion = 0
+	}: {
+		cubetas: Cubeta[];
+		agrupar: 'hora' | 'dia';
+		/** Ancho al que se dibuja en papel (lo sabe la página, que es la que fija @page); 0 = escalar. */
+		anchoImpresion?: number;
+	} = $props();
 
 	const COLOR: Record<Resultado, string> = {
 		procesado: 'var(--uso-procesado)',
@@ -18,6 +28,23 @@
 
 	let ancho = $state(0);
 	let activo = $state<number | null>(null);
+
+	// La hoja es más angosta que la pantalla: escalar el dibujo de pantalla dejaría los textos de
+	// los ejes diminutos. Mientras se imprime se dibuja al ancho del papel. `beforeprint` llega
+	// antes de que el navegador acomode la hoja, y flushSync aplica el cambio en ese momento.
+	let imprimiendo = $state(false);
+	$effect(() => {
+		if (!anchoImpresion) return;
+		const antes = () => flushSync(() => (imprimiendo = true));
+		const despues = () => (imprimiendo = false);
+		addEventListener('beforeprint', antes);
+		addEventListener('afterprint', despues);
+		return () => {
+			removeEventListener('beforeprint', antes);
+			removeEventListener('afterprint', despues);
+		};
+	});
+	const anchoDibujo = $derived(imprimiendo ? anchoImpresion : ancho);
 
 	const total = (c: Cubeta) => c.procesado + c.no_procesado + c.error;
 	const maximo = $derived(Math.max(0, ...cubetas.map(total)));
@@ -32,7 +59,7 @@
 	});
 	const tope = $derived(ticks[ticks.length - 1]);
 	const altoPlot = ALTO - M.arriba - M.abajo;
-	const anchoPlot = $derived(Math.max(0, ancho - M.izquierda - M.derecha));
+	const anchoPlot = $derived(Math.max(0, anchoDibujo - M.izquierda - M.derecha));
 	const ranura = $derived(cubetas.length ? anchoPlot / cubetas.length : 0);
 	const grosor = $derived(Math.max(1, Math.min(24, ranura * 0.7)));
 	const y = (v: number) => M.arriba + altoPlot - (v / tope) * altoPlot;
@@ -111,16 +138,16 @@
 	</ul>
 
 	<div class="lienzo" bind:clientWidth={ancho} style:height="{ALTO}px">
-		{#if ancho > 0}
+		{#if anchoDibujo > 0}
 			<!-- Enfocable y con flechas para recorrer columnas: el tooltip también sirve con teclado. -->
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-			<!-- viewBox: al imprimir la hoja es más angosta que la pantalla y la gráfica se escala
-			     completa en vez de salirse del papel. -->
+			<!-- viewBox: si el papel no mide justo anchoImpresion (u otra página la imprime sin
+			     darlo), la gráfica se escala completa en vez de salirse de la hoja. -->
 			<svg
-				width={ancho}
+				width={anchoDibujo}
 				height={ALTO}
-				viewBox="0 0 {ancho} {ALTO}"
+				viewBox="0 0 {anchoDibujo} {ALTO}"
 				tabindex="0"
 				role="group"
 				aria-label="Peticiones por {agrupar === 'hora' ? 'hora' : 'día'}, por resultado. Flechas izquierda y derecha para recorrer las columnas."
@@ -132,7 +159,7 @@
 				{#each ticks as t (t)}
 					<line
 						x1={M.izquierda}
-						x2={ancho - M.derecha}
+						x2={anchoDibujo - M.derecha}
 						y1={y(t)}
 						y2={y(t)}
 						class={t === 0 ? 'base' : 'rejilla'}

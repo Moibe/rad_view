@@ -101,6 +101,10 @@
 	// PDF: se imprime esta misma página, con los estilos de @media print (sin barras ni filtros y
 	// con un encabezado de reporte). Antes se traen las peticiones que falten, hasta LIMITE_PDF.
 	const LIMITE_PDF = 5000;
+	// Ancho de la gráfica en papel: carta vertical (816 px) − márgenes de @page (10 mm = 37.8 px por
+	// lado) − borde (1 px por lado) y relleno (--card-spacing de papel, 12 px por lado) de la tarjeta.
+	// Si cambia @page o ese relleno (abajo, en <style>), cambia esto.
+	const ANCHO_GRAFICA_PAPEL = 714;
 	const NOMBRE_AMBIENTE = { prod: 'Producción', dev: 'Desarrollo', local: 'Local' } as const;
 	const csvHref = $derived('/uso/csv' + page.url.search);
 	let preparandoPdf = $state(false);
@@ -320,7 +324,7 @@
 				<Card.Description>{nombrePeriodo}, apiladas por resultado.</Card.Description>
 			</Card.Header>
 			<Card.Content>
-				<GraficaUso cubetas={data.cubetas} agrupar={data.agrupar} />
+				<GraficaUso cubetas={data.cubetas} agrupar={data.agrupar} anchoImpresion={ANCHO_GRAFICA_PAPEL} />
 			</Card.Content>
 		</Card.Root>
 
@@ -501,13 +505,16 @@
 										<span class="tabular-nums">{f.codigo ?? f.status_http}</span>
 										{#if f.estado}<span class="ml-1 text-xs text-muted-foreground">{f.estado}</span>{/if}
 									</Table.Cell>
-									<Table.Cell class="text-right tabular-nums">{duracion(f.ms)}</Table.Cell>
+									<!-- whitespace-nowrap en las unidades: en el PDF las celdas sí se parten en dos
+									     renglones, pero nunca entre «1.9» y «MB» ni entre «85» y «%». -->
+									<Table.Cell class="text-right tabular-nums"><span class="whitespace-nowrap">{duracion(f.ms)}</span></Table.Cell>
 									<Table.Cell class="text-muted-foreground">
-										{#if f.mime}{(f.archivos ?? 1) > 1 ? `${f.archivos} × ` : ''}{tipoArchivo(f.mime)} · {/if}{tamano(f.bytes)}
+										<!-- {' '}: el espacio suelto al final del {#if} Svelte lo recorta («PDF ·1.5 MB»). -->
+										{#if f.mime}{(f.archivos ?? 1) > 1 ? `${f.archivos} × ` : ''}{tipoArchivo(f.mime)}&nbsp;·{' '}{/if}<span class="whitespace-nowrap">{tamano(f.bytes)}</span>
 									</Table.Cell>
 									<Table.Cell class="text-muted-foreground">
 										{categoria(f.categoria)}
-										{#if f.confianza != null}<span class="tabular-nums"> · {confianza(f.confianza)}</span>{/if}
+										{#if f.confianza != null}<span class="tabular-nums whitespace-nowrap">· {confianza(f.confianza)}</span>{/if}
 									</Table.Cell>
 									<Table.Cell class="tabular-nums text-muted-foreground" title={f.agente ?? ''}>{f.ip ?? '—'}</Table.Cell>
 								</Table.Row>
@@ -728,22 +735,40 @@
 		color: var(--muted-foreground);
 	}
 
-	/* --- PDF: hoja carta horizontal, para que la tabla de peticiones quepa a lo ancho --- */
+	/* --- PDF: hoja carta VERTICAL ---
+	   Horizontal se veía bien en "Guardar como PDF", pero la impresora (y "Microsoft Print to PDF")
+	   usan papel vertical: Chrome giraba cada hoja para que cupiera y salía de lado. En vertical no
+	   hay nada que girar en ningún camino. Los márgenes van ligados a ANCHO_GRAFICA_PAPEL. */
 	@page {
-		size: letter landscape;
-		margin: 12mm;
+		size: letter portrait;
+		margin: 10mm;
 	}
 	@media print {
-		/* La hoja mide menos que los cortes de pantalla: se fija aquí cómo se acomoda. */
+		/* La hoja (unos 740 px) mide menos que los cortes de pantalla: aquí se fija cómo se acomoda. */
+		:global([data-slot='card']) {
+			--card-spacing: 0.75rem;
+		}
+		.reporte-datos {
+			grid-template-columns: 1.6fr 1fr 1fr;
+		}
 		.cifras {
 			grid-template-columns: repeat(5, minmax(0, 1fr));
+			gap: 0.5rem;
+		}
+		.cifra {
+			padding: 0.6rem 0.7rem;
+			box-shadow: none;
+			break-inside: avoid;
+		}
+		.cifra .etiqueta {
+			font-size: 0.7rem;
+		}
+		.cifra .valor {
+			font-size: 1.3rem;
 		}
 		.pares {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-		.cifra {
-			box-shadow: none;
-			break-inside: avoid;
+			gap: 1rem;
 		}
 		/* La tarjeta de peticiones sí se parte entre hojas (el encabezado de la tabla se repite). */
 		:global([data-slot='card'].se-parte) {
@@ -752,13 +777,18 @@
 		:global([data-slot='table-container']) {
 			overflow: visible;
 		}
+		/* Ocho columnas en ~714 px: letra chica y que las celdas puedan partirse en dos renglones. */
 		:global(table.peticiones) {
-			font-size: 0.68rem;
+			font-size: 0.64rem;
 		}
 		:global(table.peticiones th),
 		:global(table.peticiones td) {
-			padding: 0.25rem 0.4rem;
+			padding: 0.2rem 0.3rem;
 			white-space: normal;
+		}
+		:global(table.peticiones .codigo) {
+			padding: 0.05em 0.25em;
+			font-size: 0.9em;
 		}
 		:global(table.peticiones tr) {
 			break-inside: avoid;
