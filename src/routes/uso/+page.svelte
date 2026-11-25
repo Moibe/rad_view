@@ -1,10 +1,14 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { navigating, page } from '$app/state';
+	import Download from '@lucide/svelte/icons/download';
+	import FileText from '@lucide/svelte/icons/file-text';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { Button } from '$lib/components/ui/button';
 	import AvisoRad from '$lib/AvisoRad.svelte';
+	import EtiquetaAmbiente from '$lib/EtiquetaAmbiente.svelte';
 	import GraficaUso from '$lib/GraficaUso.svelte';
 	import {
 		DESCRIPCION_RESULTADO,
@@ -59,31 +63,89 @@
 	let cargando = $state(false);
 	let errorMas = $state('');
 
+	/** Falla con un mensaje de RAD que ya se puede mostrar. */
+	class ErrorFilas extends Error {}
+
+	/** Agrega la página siguiente de peticiones. Regresa false si la sesión venció (ya se fue al login). */
+	async function traerSiguiente(limite = 50) {
+		const q = new URLSearchParams(page.url.search);
+		q.set('antes_de', String(siguiente));
+		q.set('limite', String(limite));
+		const res = await fetch(`/uso/filas?${q}`);
+		if (!res.headers.get('content-type')?.includes('json')) {
+			location.href = '/login'; // la sesión venció: el guard respondió con el login
+			return false;
+		}
+		const j = await res.json();
+		if (!res.ok) throw new ErrorFilas(j.error ?? 'No se pudieron cargar más.');
+		filas = [...filas, ...j.filas];
+		siguiente = j.siguiente;
+		return true;
+	}
+
 	async function cargarMas() {
 		if (siguiente == null) return;
 		cargando = true;
 		errorMas = '';
 		try {
-			const q = new URLSearchParams(page.url.search);
-			q.set('antes_de', String(siguiente));
-			const res = await fetch(`/uso/filas?${q}`);
-			if (!res.headers.get('content-type')?.includes('json')) {
-				location.href = '/login'; // la sesión venció: el guard respondió con el login
-				return;
-			}
-			const j = await res.json();
-			if (!res.ok) {
-				errorMas = j.error ?? 'No se pudieron cargar más.';
-				return;
-			}
-			filas = [...filas, ...j.filas];
-			siguiente = j.siguiente;
-		} catch {
-			errorMas = 'No se pudieron cargar más.';
+			await traerSiguiente();
+		} catch (e) {
+			errorMas = e instanceof ErrorFilas ? e.message : 'No se pudieron cargar más.';
 		} finally {
 			cargando = false;
 		}
 	}
+
+	// --- Exportar -------------------------------------------------------------------------------
+	// CSV: lo arma el servidor con TODAS las peticiones de estos filtros (/uso/csv).
+	// PDF: se imprime esta misma página, con los estilos de @media print (sin barras ni filtros y
+	// con un encabezado de reporte). Antes se traen las peticiones que falten, hasta LIMITE_PDF.
+	const LIMITE_PDF = 5000;
+	const NOMBRE_AMBIENTE = { prod: 'Producción', dev: 'Desarrollo', local: 'Local' } as const;
+	const csvHref = $derived('/uso/csv' + page.url.search);
+	let preparandoPdf = $state(false);
+	let errorPdf = $state('');
+	let generadoEn = $state(new Date().toISOString());
+
+	/** Días que cubre el reporte (AAAA-MM-DD, hora de México), para el nombre del archivo. */
+	const dias = $derived.by(() => {
+		const primero = data.cubetas[0]?.clave.slice(0, 10) ?? data.desde.slice(0, 10);
+		const ultimo = data.cubetas.at(-1)?.clave.slice(0, 10) ?? primero;
+		return primero === ultimo ? primero : `${primero} a ${ultimo}`;
+	});
+
+	async function exportarPdf() {
+		preparandoPdf = true;
+		errorPdf = '';
+		try {
+			while (siguiente != null && filas.length < LIMITE_PDF)
+				if (!(await traerSiguiente(Math.min(1000, LIMITE_PDF - filas.length)))) return;
+			generadoEn = new Date().toISOString();
+			await tick();
+			// Chrome y Edge proponen el título de la página como nombre del PDF.
+			const titulo = document.title;
+			document.title = `Uso RAD - ${NOMBRE_AMBIENTE[data.ambiente]} - ${dias}`;
+			window.print();
+			document.title = titulo;
+		} catch (e) {
+			errorPdf = e instanceof ErrorFilas ? e.message : 'No se pudo preparar el PDF.';
+		} finally {
+			preparandoPdf = false;
+		}
+	}
+
+	/** Los filtros de la página, dichos en palabras para el encabezado del PDF. */
+	const filtrosEnPalabras = $derived.by(() => {
+		const e = data.elegidos;
+		const partes: string[] = [];
+		if (e.llave) {
+			const l = data.llaves.find((x) => String(x.id) === e.llave);
+			partes.push(l ? `llave de ${l.cliente} (${l.prefijo}…)` : NOMBRE_ESTADO_LLAVE[e.llave as EstadoLlave]);
+		}
+		if (e.endpoint) partes.push(e.endpoint);
+		if (e.resultado) partes.push(NOMBRE_RESULTADO[e.resultado as Resultado]);
+		return partes.length ? partes.join(' · ') : 'Ninguno: todas las peticiones';
+	});
 
 	const nombrePeriodo = $derived(data.periodos.find((p) => p.id === data.elegidos.periodo)?.nombre ?? '');
 	const maxPorLlave = $derived(Math.max(1, ...data.porLlave.map((f) => f.peticiones)));
@@ -95,16 +157,69 @@
 <svelte:head><title>Uso · RAD View</title></svelte:head>
 
 <div class="flex flex-col gap-6 py-2">
-	<div class="flex flex-col gap-1">
-		<h1 class="text-2xl font-semibold">Uso</h1>
-		<p class="max-w-3xl text-sm text-muted-foreground">
-			Cada petición a un endpoint de documentos de RAD (<code class="codigo">/procesa_*</code>), con la
-			llave que trajo, el resultado y cuánto tardó. Días y horas en hora del centro de México.
-		</p>
+	<div class="no-imprimir flex flex-wrap items-start justify-between gap-4">
+		<div class="flex flex-col gap-1">
+			<h1 class="text-2xl font-semibold">Uso</h1>
+			<p class="max-w-3xl text-sm text-muted-foreground">
+				Cada petición a un endpoint de documentos de RAD (<code class="codigo">/procesa_*</code>), con la
+				llave que trajo, el resultado y cuánto tardó. Días y horas en hora del centro de México.
+			</p>
+		</div>
+		<div class="flex flex-col items-end gap-1">
+			<div class="flex gap-2">
+				<!-- reload y sin precarga: es una descarga, no una página, y armarla cuesta. -->
+				<Button
+					href={csvHref}
+					variant="outline"
+					size="sm"
+					title="Todas las peticiones con estos filtros, para Excel"
+					data-sveltekit-reload
+					data-sveltekit-preload-data="off"
+				>
+					<Download class="size-4" /> Exportar CSV
+				</Button>
+				<Button
+					variant="outline"
+					size="sm"
+					title="Este reporte tal como se ve, para guardar como PDF"
+					onclick={exportarPdf}
+					disabled={preparandoPdf}
+				>
+					<FileText class="size-4" />
+					{preparandoPdf ? 'Preparando…' : 'Exportar PDF'}
+				</Button>
+			</div>
+			{#if errorPdf}<p class="text-sm text-destructive">{errorPdf}</p>{/if}
+		</div>
 	</div>
 
+	<!-- Encabezado del reporte: solo en el PDF, en lugar del título y los filtros. -->
+	<header class="solo-impresion reporte">
+		<div class="reporte-arriba">
+			<div>
+				<p class="reporte-marca">RAD View · administración de RAD</p>
+				<h1 class="reporte-titulo">Reporte de uso de RAD</h1>
+			</div>
+			<EtiquetaAmbiente ambiente={data.ambiente} />
+		</div>
+		<dl class="reporte-datos">
+			<div>
+				<dt>Periodo</dt>
+				<dd>Del {fechaHora(data.desde)} al {fechaHora(generadoEn)} (hora del centro de México)</dd>
+			</div>
+			<div>
+				<dt>Filtros</dt>
+				<dd>{filtrosEnPalabras}</dd>
+			</div>
+			<div>
+				<dt>Generado</dt>
+				<dd>{fechaHora(generadoEn)}{data.usuario ? ` por ${data.usuario.usuario}` : ''}</dd>
+			</div>
+		</dl>
+	</header>
+
 	<!-- Filtros: una sola fila arriba; afectan todo lo de abajo. Sin JS, el formulario hace lo mismo. -->
-	<form method="GET" action="/uso" class="filtros" data-sveltekit-noscroll data-sveltekit-keepfocus>
+	<form method="GET" action="/uso" class="filtros no-imprimir" data-sveltekit-noscroll data-sveltekit-keepfocus>
 		<div class="periodos" role="group" aria-label="Periodo">
 			{#each data.periodos as p (p.id)}
 				<a
@@ -209,11 +324,11 @@
 			</Card.Content>
 		</Card.Root>
 
-		<div class="grid gap-6 lg:grid-cols-2">
+		<div class="pares grid gap-6 lg:grid-cols-2">
 			<Card.Root>
 				<Card.Header>
 					<Card.Title>Por llave</Card.Title>
-					<Card.Description>Quién llama. Clic en una fila para filtrar por ella.</Card.Description>
+					<Card.Description>Quién llama.<span class="no-imprimir"> Clic en una fila para filtrar por ella.</span></Card.Description>
 				</Card.Header>
 				<Card.Content>
 					{#if data.porLlave.length === 0}
@@ -282,7 +397,7 @@
 		</div>
 
 		<!-- items-start: la lista de códigos es larga y no debe estirar la tarjeta de junto -->
-		<div class="grid items-start gap-6 lg:grid-cols-2">
+		<div class="pares grid items-start gap-6 lg:grid-cols-2">
 			<Card.Root>
 				<Card.Header>
 					<Card.Title>Por código de resultado</Card.Title>
@@ -349,7 +464,7 @@
 			{/if}
 		</div>
 
-		<Card.Root>
+		<Card.Root class="se-parte">
 			<Card.Header>
 				<Card.Title>Peticiones</Card.Title>
 				<Card.Description>Las más recientes primero. Nada del contenido del documento: solo cómo fue la petición.</Card.Description>
@@ -358,7 +473,7 @@
 				{#if filas.length === 0}
 					<p class="vacio">Sin peticiones con estos filtros.</p>
 				{:else}
-					<Table.Root>
+					<Table.Root class="peticiones">
 						<Table.Header>
 							<Table.Row>
 								<Table.Head>Fecha</Table.Head>
@@ -401,13 +516,18 @@
 					</Table.Root>
 					<div class="flex items-center gap-3">
 						{#if siguiente != null}
-							<Button variant="outline" size="sm" onclick={cargarMas} disabled={cargando}>
+							<Button class="no-imprimir" variant="outline" size="sm" onclick={cargarMas} disabled={cargando}>
 								{cargando ? 'Cargando…' : 'Cargar más'}
 							</Button>
 						{/if}
 						<span class="text-xs text-muted-foreground">
 							{entero(filas.length)} de {entero(data.total)}
 						</span>
+						{#if siguiente != null}
+							<span class="solo-impresion text-xs text-muted-foreground">
+								· Este PDF trae las {entero(filas.length)} más recientes; «Exportar CSV» las trae todas.
+							</span>
+						{/if}
 						{#if errorMas}<span class="text-sm text-destructive">{errorMas}</span>{/if}
 					</div>
 				{/if}
@@ -570,5 +690,78 @@
 		text-align: center;
 		font-size: 0.875rem;
 		color: var(--muted-foreground);
+	}
+
+	/* --- Encabezado del reporte (solo PDF) --- */
+	.reporte {
+		padding-bottom: 0.9rem;
+		border-bottom: 2px solid var(--primary);
+	}
+	.reporte-arriba {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+	.reporte-marca {
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: var(--primary);
+	}
+	.reporte-titulo {
+		font-size: 1.5rem;
+		font-weight: 600;
+		line-height: 1.25;
+	}
+	.reporte-datos {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 1rem;
+		margin-top: 0.75rem;
+		font-size: 0.8rem;
+	}
+	.reporte-datos dt {
+		font-size: 0.7rem;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--muted-foreground);
+	}
+
+	/* --- PDF: hoja carta horizontal, para que la tabla de peticiones quepa a lo ancho --- */
+	@page {
+		size: letter landscape;
+		margin: 12mm;
+	}
+	@media print {
+		/* La hoja mide menos que los cortes de pantalla: se fija aquí cómo se acomoda. */
+		.cifras {
+			grid-template-columns: repeat(5, minmax(0, 1fr));
+		}
+		.pares {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+		.cifra {
+			box-shadow: none;
+			break-inside: avoid;
+		}
+		/* La tarjeta de peticiones sí se parte entre hojas (el encabezado de la tabla se repite). */
+		:global([data-slot='card'].se-parte) {
+			break-inside: auto;
+		}
+		:global([data-slot='table-container']) {
+			overflow: visible;
+		}
+		:global(table.peticiones) {
+			font-size: 0.68rem;
+		}
+		:global(table.peticiones th),
+		:global(table.peticiones td) {
+			padding: 0.25rem 0.4rem;
+			white-space: normal;
+		}
+		:global(table.peticiones tr) {
+			break-inside: avoid;
+		}
 	}
 </style>

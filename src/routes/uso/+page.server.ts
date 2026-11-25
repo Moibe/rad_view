@@ -15,7 +15,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	// «Quién llama sin llave» solo tiene sentido si el filtro no es ya una llave concreta.
 	const verSinLlave = !filtros.api_key_id && (!filtros.llave || filtros.llave === 'sin_llave');
 
-	const base = { elegidos, periodos: PERIODOS, agrupar: rango.agrupar };
+	// `desde`: el inicio real del periodo, para el encabezado del PDF.
+	const base = { elegidos, periodos: PERIODOS, agrupar: rango.agrupar, desde: rango.desde };
 	try {
 		const [serie, porLlave, porEndpoint, porCodigo, sinLlave, uso, llaves, endpoints] =
 			await Promise.all([

@@ -191,3 +191,32 @@
 		@apply bg-background text-foreground font-sans;
 	}
 }
+
+/* Impresión ("Exportar PDF" de /uso imprime la misma página): `.solo-impresion` solo sale en el
+   papel y `.no-imprimir` solo en pantalla. Los colores (puntos, barras, gráfica) se imprimen tal
+   cual, sin que el navegador los quite para ahorrar tinta. */
+.solo-impresion {
+	display: none;
+}
+@media print {
+	.solo-impresion {
+		display: block;
+	}
+	.no-imprimir {
+		display: none !important;
+	}
+	html,
+	body {
+		background: #fff !important; /* el #fcfcfc de la app saldría como un recuadro gris */
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+	/* El contorno de la tarjeta es un ring: un box-shadow 1 px POR FUERA. Si la tarjeta empieza
+	   arriba de una hoja, ese pixel cae al pie de la anterior como una rayita suelta. En papel va
+	   un borde, que queda por dentro. */
+	[data-slot='card'] {
+		box-shadow: none;
+		border: 1px solid var(--border);
+		break-inside: avoid;
+	}
+}

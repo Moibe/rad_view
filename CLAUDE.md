@@ -47,7 +47,18 @@ Hecho y verificado (check + build limpios; login/logout probados con curl y con 
     los lee `$lib/server/filtros-uso.ts`), cifras, gráfica apilada por resultado (`GraficaUso.svelte`, SVG
     a mano: por hora si es hoy, por día si no; tooltip con hover y flechas, «Ver como tabla»), por llave,
     por endpoint, por código, quién llama sin llave (IP + User-Agent) y las peticiones con «Cargar más»
-    (`/uso/filas`, mismos filtros + `antes_de`). Colores de la gráfica en `--uso-*` de `app.css`.
+    (`/uso/filas`, mismos filtros + `antes_de` + `limite` ≤ 1000). Colores de la gráfica en `--uso-*` de `app.css`.
+  - **Exportar** (2026-11-25), con los filtros de la página:
+    - **CSV** (`/uso/csv`): todas las filas, que pide a RAD de 1000 en 1000. Va en UTF-8 con BOM para Excel,
+      con fecha en hora de México y en UTC. Los textos que empiezan con `= + - @` (el User-Agent lo manda
+      quien llama) llevan un `'` delante para que Excel no los tome como fórmula.
+    - **PDF**: imprime la misma página (`window.print()`). Antes trae todas las peticiones, hasta 5000.
+      Los estilos de impresión ocultan las barras y los filtros y muestran el encabezado del reporte
+      (periodo, filtros en palabras, quién y cuándo). La hoja es carta horizontal y el título de la página
+      se cambia para que el PDF se llame `Uso RAD - <ambiente> - <días>`. Utilidades en `app.css`:
+      `.solo-impresion` / `.no-imprimir`. En papel las tarjetas llevan `border` y no su `ring`: el ring
+      es un box-shadow por fuera y deja una rayita al pie de la hoja anterior. La gráfica tiene `viewBox`
+      para escalarse a la hoja. Se probó generando el PDF con Chromium y revisándolo.
 - **Etiqueta de ambiente** en el header y en el login (`EtiquetaAmbiente.svelte`) más una franja de color
   arriba de la TopNav: Producción en rojo, Desarrollo en ámbar, Local en gris. La decide
   `$lib/server/ambiente.ts`: `AMBIENTE` del `.env` si está; si no, `npm run dev` → local, `PORT` 4901 → dev,

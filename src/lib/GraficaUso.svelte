@@ -115,9 +115,12 @@
 			<!-- Enfocable y con flechas para recorrer columnas: el tooltip también sirve con teclado. -->
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<!-- viewBox: al imprimir la hoja es más angosta que la pantalla y la gráfica se escala
+			     completa en vez de salirse del papel. -->
 			<svg
 				width={ancho}
 				height={ALTO}
+				viewBox="0 0 {ancho} {ALTO}"
 				tabindex="0"
 				role="group"
 				aria-label="Peticiones por {agrupar === 'hora' ? 'hora' : 'día'}, por resultado. Flechas izquierda y derecha para recorrer las columnas."
@@ -188,7 +191,7 @@
 		{/if}
 	</div>
 
-	<details class="tabla">
+	<details class="tabla no-imprimir">
 		<summary>Ver como tabla</summary>
 		<div class="max-h-72 overflow-auto">
 			<table>
@@ -338,5 +341,17 @@
 		background: var(--card);
 		color: var(--muted-foreground);
 		font-weight: 500;
+	}
+	@media print {
+		.lienzo {
+			height: auto !important;
+		}
+		svg {
+			width: 100%;
+			height: auto;
+		}
+		.tooltip {
+			display: none;
+		}
 	}
 </style>

@@ -40,8 +40,10 @@
 </svelte:head>
 
 {#if data.usuario}
-  <TopNav usuario={data.usuario.usuario} ambiente={data.ambiente} />
-  <Sidebar {collapsed} {toggleCollapsed} />
+  <div class="barras no-imprimir">
+    <TopNav usuario={data.usuario.usuario} ambiente={data.ambiente} />
+    <Sidebar {collapsed} {toggleCollapsed} />
+  </div>
   <main class={collapsed ? 'collapsed' : ''}>
     <div class="contenido">
       {@render children()}
@@ -122,6 +124,23 @@
   @media (max-width: 680px) {
     .contenido {
       padding: 1.25rem 1rem;
+    }
+  }
+
+  .barras {
+    display: contents;
+  }
+  /* En papel no hay barras, y el panel deja de ser una caja fija con scroll propio: si no, solo
+     se imprimiría lo que cabe en la ventana. */
+  @media print {
+    main,
+    main.collapsed {
+      position: static;
+      overflow: visible;
+    }
+    .contenido {
+      max-width: none;
+      padding: 0;
     }
   }
 </style>
